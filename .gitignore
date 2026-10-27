@@ -1,0 +1,6 @@
+project/data/
+project/.venv/
+project/cache/
+project/results/
+__pycache__/
+.DS_Store

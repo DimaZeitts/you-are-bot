@@ -1,0 +1,109 @@
+run_name: v5_bag_temp
+seed: 0
+data:
+  dir: data/raw
+  cache_dir: cache
+resources:
+  threads: 4
+  embed_device: mps
+  embed_batch_size: 64
+cv:
+  enabled: true
+  n_splits: 5
+  seeds:
+  - 0
+level1:
+  n_inner: 5
+  seed_offsets:
+    text_lr: 1
+    embeddings: 7
+    knn: 11
+    message_lr: 23
+  lr_max_iter: 3000
+  text_lr:
+    C: 4.0
+    word_ngram:
+    - 1
+    - 2
+    char_ngram:
+    - 1
+    - 5
+    char_min_df: 2
+  position:
+    bandwidths:
+    - 0.003
+    - 0.01
+    - 0.03
+    - 0.1
+    prior_weight: 1.0
+    prior_rate: 0.4
+  embeddings:
+    models:
+    - cointegrated/rubert-tiny2
+    - intfloat/multilingual-e5-base
+    lr_C: 1.0
+    sim_model: intfloat/multilingual-e5-base
+  knn:
+    model: intfloat/multilingual-e5-base
+    ks:
+    - 1
+    - 5
+    - 20
+    temperature: 10.0
+  message_lr:
+    enabled: true
+    C: 2.0
+    char_ngram:
+    - 1
+    - 5
+    char_min_df: 2
+    word_ngram:
+    - 1
+    - 2
+    prev_char_ngram:
+    - 2
+    - 4
+    prev_min_df: 3
+    prev_weight: 0.5
+  partner_features:
+  - lr
+  - echo_rate
+  - prev_echo_rate
+  - contains_rate
+  - n_mine
+  - len_mean
+  - lat_share
+  - newline
+  - cap_start
+  - consec
+level2:
+  n_seeds: 2
+  num_boost_round: 1200
+  params:
+    objective: binary
+    extra_trees: true
+    learning_rate: 0.02
+    num_leaves: 15
+    min_child_samples: 15
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.3
+    reg_lambda: 1.0
+  dialog_model:
+    enabled: true
+    weight: 0.4
+    num_boost_round: 2000
+    params:
+      learning_rate: 0.01
+bagging:
+  inner_seeds:
+  - 0
+  - 1
+  - 2
+calibration:
+  temperature: 1.15
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment: you-are-bot
+output:
+  submission: results/submission_v5.csv

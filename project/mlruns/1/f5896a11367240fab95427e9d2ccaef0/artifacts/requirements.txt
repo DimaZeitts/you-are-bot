@@ -1,0 +1,12 @@
+# Python 3.14 (проверено на macOS arm64, Apple M2)
+numpy==2.5.4
+pandas==3.1.0
+scipy==1.18.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+PyYAML==6.0.3
+mlflow==3.17.2
+torch==2.14.1
+transformers==5.20.2
+sentence-transformers==6.2.0
+matplotlib==3.11.2

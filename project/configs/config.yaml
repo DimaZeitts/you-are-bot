@@ -1,0 +1,86 @@
+# Все параметры эксперимента. Каждый ключ логируется в MLflow как параметр.
+run_name: v5_bag_temp
+
+data:
+  dir: data/raw           # train.json, ytrain.csv, test.json, ytest.csv
+  cache_dir: cache        # эмбеддинги реплик (пересчитываются, если файла нет)
+
+resources:
+  threads: 4              # потолок потоков для numpy/sklearn/LightGBM/torch (MacBook M2: 4P+4E ядра)
+  embed_device: mps       # mps | cpu
+  embed_batch_size: 64
+
+cv:
+  enabled: true
+  n_splits: 5
+  seeds: [0]              # сиды внешнего разбиения CV
+
+level1:
+  n_inner: 5              # внутренняя CV для OOF-признаков 1-го уровня
+  seed_offsets:           # сид внутреннего разбиения = сид бэггинга + offset (своё для каждой модели 1-го уровня)
+    text_lr: 1
+    embeddings: 7
+    knn: 11
+    message_lr: 23
+  lr_max_iter: 3000       # max_iter всех логрегов 1-го уровня
+  text_lr:
+    C: 4.0
+    word_ngram: [1, 2]
+    char_ngram: [1, 5]
+    char_min_df: 2
+  position:
+    bandwidths: [0.003, 0.01, 0.03, 0.1]
+    prior_weight: 1.0
+    prior_rate: 0.4
+  embeddings:
+    models: [cointegrated/rubert-tiny2, intfloat/multilingual-e5-base]
+    lr_C: 1.0
+    sim_model: intfloat/multilingual-e5-base   # чьи эмбеддинги идут в признаки сходства реплик
+  knn:
+    model: intfloat/multilingual-e5-base
+    ks: [1, 5, 20]
+    temperature: 10.0
+  message_lr:             # логрег по отдельным сообщениям с контекстом, агрегаты по участнику
+    enabled: true
+    C: 2.0
+    char_ngram: [1, 5]
+    char_min_df: 2
+    word_ngram: [1, 2]
+    prev_char_ngram: [2, 4]   # реплика собеседника перед сообщением
+    prev_min_df: 3
+    prev_weight: 0.5
+  partner_features: [lr, echo_rate, prev_echo_rate, contains_rate, n_mine, len_mean, lat_share,
+                     newline, cap_start, consec]
+
+level2:
+  n_seeds: 2              # усреднение LightGBM по сидам (внутри каждого сида бэггинга)
+  num_boost_round: 1200
+  params:
+    objective: binary
+    extra_trees: true
+    learning_rate: 0.02
+    num_leaves: 15
+    min_child_samples: 15
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.3
+    reg_lambda: 1.0
+  dialog_model:           # 3-классовая модель на уровне диалога, бленд с моделью участника
+    enabled: true
+    weight: 0.4
+    num_boost_round: 2000
+    params:
+      learning_rate: 0.01
+
+bagging:                  # весь стек повторяется с разными сидами внутренних разбиений (seed) и усредняется
+  inner_seeds: [0, 1, 2]
+
+calibration:
+  temperature: 1.15       # logit / T; подобрано по OOF на CV (модель переуверена)
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment: you-are-bot
+
+output:
+  submission: results/submission_v5.csv
